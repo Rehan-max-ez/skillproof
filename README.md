@@ -1,6 +1,13 @@
 # SkillProof Setup Guide (For New Users)
 
 Follow these steps to run the SkillProof backend on your laptop.
+## Requirements
+
+Before running the project, make sure you have:
+
+- Python 3.10 or higher
+- PostgreSQL (with pgAdmin4)  https://www.postgresql.org/download/
+- Git  https://git-scm.com/downloads
 
 ---
 
