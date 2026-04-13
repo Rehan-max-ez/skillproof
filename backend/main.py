@@ -1,22 +1,38 @@
-from fastapi import Depends, FastAPI
-from google import genai
 import os
-from backend.auth import get_current_user
-from backend.database import create_db_and_tables
-from backend.models import User
-from backend.routers import user
-from backend.routers import assessment
 
 from dotenv import load_dotenv
 load_dotenv()
 
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-
+from backend.ai_service import (
+    AI_PROVIDER,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+    check_gemini_connection,
+    check_ollama_connection,
+    get_provider_info,
+)
+from backend.auth import get_current_user
+from backend.database import create_db_and_tables
+from backend.routers import assessment, user
 
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.on_event("startup") 
+
+@app.on_event("startup")
 def on_startup():
     create_db_and_tables()
 
@@ -25,45 +41,45 @@ def on_startup():
 def read_root():
     return {"message": "SkillProof Backend Running"}
 
+
 app.include_router(user.router)
-
 app.include_router(assessment.router)
-
-
 
 
 @app.get("/test-auth")
 def test_auth(u: str = Depends(get_current_user)):
     return {"u": u}
 
-from google import genai
-import os
-
 
 @app.on_event("startup")
-def test_gemini_connection():
-    print("==== GEMINI STARTUP TEST ====")
+def test_ai_connection():
+    info = get_provider_info()
+    print("==== AI PROVIDER STARTUP TEST ====")
+    print(f"PROVIDER : {info['provider']}")
+    print(f"MODEL    : {info['model']}")
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    if AI_PROVIDER == "gemini":
+        try:
+            model = check_gemini_connection()
+            print(f"GEMINI READY — model: {model}")
+        except Exception as exc:
+            print(f"GEMINI CONNECTION FAILED: {exc}")
 
-    if not api_key:
-        print("❌ GEMINI_API_KEY NOT FOUND")
-        return
+    elif AI_PROVIDER == "ollama":
+        print(f"TIMEOUT  : {OLLAMA_TIMEOUT_SECONDS} seconds")
+        try:
+            models = check_ollama_connection()
+            print("OLLAMA MODELS AVAILABLE:")
+            for m in models:
+                print(f"  - {m}")
+            if OLLAMA_MODEL not in models:
+                print("WARNING: target model is not currently pulled.")
+            else:
+                print("==== OLLAMA READY ====")
+        except Exception as exc:
+            print(f"OLLAMA CONNECTION FAILED: {exc}")
 
-    print("API KEY DETECTED:", api_key[:15], "...")
+    else:
+        print(f"WARNING: unknown AI_PROVIDER={AI_PROVIDER!r}")
 
-    try:
-        client = genai.Client(api_key=api_key)
-
-        models = client.models.list()
-
-        print("✅ GEMINI MODELS AVAILABLE:")
-        for m in models:
-            print(" -", m.name)
-
-        print("==== GEMINI READY ====")
-
-    except Exception as e:
-        print("❌ GEMINI CONNECTION FAILED:", e)
-
-    print("=============================")
+    print("==================================")

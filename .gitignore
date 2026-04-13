@@ -5,3 +5,10 @@ __pycache__/
 *.db
 .idea/
 .vscode/
+*.log
+*.tmp
+*_replacement.py
+test_gemini*.py
+_py_replacement.tmp
+.py
+node_modules/
